@@ -1,16 +1,15 @@
 terraform {
   required_providers {
-    aws         = { source = "hashicorp/aws", version = ">= 5.0" }
-    kubernetes  = { source = "hashicorp/kubernetes", version = "~> 2.29" }
-    helm        = { source = "hashicorp/helm", version = "~> 2.12" }
+    aws        = { source = "hashicorp/aws", version = ">= 5.0" }
+    kubernetes = { source = "hashicorp/kubernetes", version = "~> 2.29" }
+    helm       = { source = "hashicorp/helm", version = "~> 2.12" }
   }
   backend "s3" {
-    bucket         = "hivemind-tf-state"
-    key            = "greeter/terraform.tfstate"
-    region         = "eu-central-1"
-    dynamodb_table = "tf-lock-hivemind-dev"
-    encrypt        = true
-    profile        = "hivemind"
+    bucket       = "hivemind-tf-state"
+    key          = "greeter/terraform.tfstate"
+    region       = "eu-central-1"
+    use_lockfile = true
+    encrypt      = true
   }
 }
 
@@ -44,7 +43,7 @@ variable "release_name" {
 variable "image_repository" {
   description = "Full image repository (ECR), e.g. <ACCOUNT_ID>.dkr.ecr.eu-central-1.amazonaws.com/greeter"
   type        = string
-  default = "959413831332.dkr.ecr.eu-central-1.amazonaws.com/greeter"
+  default     = "959413831332.dkr.ecr.eu-central-1.amazonaws.com/greeter"
 }
 
 variable "image_tag" {
