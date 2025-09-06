@@ -1,0 +1,35 @@
+# .github/workflows/build-and-push.yml
+name: Build & Push
+on:
+  push:
+    branches: [ "main" ]
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::959413831332:role/eks-ci-role
+          aws-region: eu-central-1
+
+      - name: Login to ECR
+        run: |
+          aws ecr get-login-password --region eu-central-1 \
+            | docker login --username AWS --password-stdin 959413831332.dkr.ecr.eu-central-1.amazonaws.com
+
+      - name: Build & Push
+        env:
+          REPO: 959413831332.dkr.ecr.eu-central-1.amazonaws.com/greeter
+          TAG:  ${{ github.sha }}
+        run: |
+          docker build -t $REPO:$TAG .
+          docker push $REPO:$TAG
+          docker tag  $REPO:$TAG $REPO:latest
+          docker push $REPO:latest
