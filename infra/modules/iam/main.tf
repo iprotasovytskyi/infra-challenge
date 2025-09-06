@@ -6,7 +6,7 @@ terraform {
 }
 
 provider "aws" {
-  region = var.region
+  region  = var.region
   profile = "hivemind"
 }
 
@@ -35,7 +35,7 @@ data "aws_iam_policy_document" "human_admin_assume" {
   count = var.create_human_admin_role ? 1 : 0
 
   statement {
-    sid = "AllowAssume"
+    sid     = "AllowAssume"
     actions = ["sts:AssumeRole"]
     principals {
       type        = "AWS"
@@ -60,12 +60,12 @@ data "aws_iam_policy_document" "human_admin_policy_doc" {
   count = var.create_human_admin_role ? 1 : 0
 
   statement {
-    sid     = "EKSBasicAccess"
-    actions = ["eks:DescribeCluster", "eks:AccessKubernetesApi"]
+    sid       = "EKSBasicAccess"
+    actions   = ["eks:DescribeCluster", "eks:AccessKubernetesApi"]
     resources = ["*"]
   }
   statement {
-    sid     = "ReadSecurityGroups"
+    sid = "ReadSecurityGroups"
     actions = [
       "ec2:DescribeSecurityGroups",
       "ec2:DescribeSecurityGroupRules"
@@ -74,7 +74,7 @@ data "aws_iam_policy_document" "human_admin_policy_doc" {
   }
 
   statement {
-    sid     = "ModifyAnySecurityGroup"
+    sid = "ModifyAnySecurityGroup"
     actions = [
       "ec2:AuthorizeSecurityGroupIngress",
       "ec2:RevokeSecurityGroupIngress",
@@ -103,7 +103,7 @@ resource "aws_iam_policy" "human_admin_sg_modify" {
   count       = var.create_human_admin_role ? 1 : 0
   name        = "eks-human-admin-sg-modify"
   description = "Allow modifying any Security Group ingress/egress in the account/region (for EKS LB access)"
-  policy      = jsonencode({
+  policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
@@ -178,18 +178,109 @@ resource "aws_iam_role" "ci" {
   }
 }
 
-# ECR permissions limited to a single repository
-data "aws_iam_policy_document" "ci_ecr" {
+# Minimal AWS permissions to reach the EKS API (Kubernetes rights via Access Entries)
+data "aws_iam_policy_document" "ci_eks" {
   count = var.create_ci_role ? 1 : 0
 
   statement {
-    sid     = "ECRGetAuthToken"
-    actions = ["ecr:GetAuthorizationToken"]
+    sid       = "EKSBasicAccess"
+    actions   = ["eks:DescribeCluster", "eks:AccessKubernetesApi"]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_policy" "ci_eks_policy" {
+  count       = var.create_ci_role ? 1 : 0
+  name        = "eks-ci-eks-basic"
+  description = "CI minimal AWS permissions to access EKS API; RBAC via Access Entries"
+  policy      = data.aws_iam_policy_document.ci_eks[0].json
+}
+
+resource "aws_iam_role_policy_attachment" "ci_eks_attach" {
+  count      = var.create_ci_role ? 1 : 0
+  role       = aws_iam_role.ci[0].name
+  policy_arn = aws_iam_policy.ci_eks_policy[0].arn
+}
+
+# --- S3 backend (Terraform state) ---
+data "aws_iam_policy_document" "ci_s3_backend" {
+  statement {
+    sid     = "ListStateBucket"
+    actions = ["s3:ListBucket"]
+    resources = [
+      "arn:aws:s3:::hivemind-tf-state"
+    ]
+    condition {
+      test     = "StringLike"
+      variable = "s3:prefix"
+      values   = ["greeter/*", "greeter/terraform.tfstate"]
+    }
+  }
+
+  statement {
+    sid = "RWStateObject"
+    actions = [
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:DeleteObject"
+    ]
+    resources = [
+      "arn:aws:s3:::hivemind-tf-state/greeter/terraform.tfstate",
+      "arn:aws:s3:::hivemind-tf-state/greeter/*"
+    ]
+  }
+}
+
+resource "aws_iam_policy" "ci_s3_backend" {
+  name        = "eks-ci-s3-backend"
+  description = "RW access to Terraform state in S3 (greeter/*)"
+  policy      = data.aws_iam_policy_document.ci_s3_backend.json
+}
+
+resource "aws_iam_role_policy_attachment" "ci_s3_backend_attach" {
+  role       = aws_iam_role.ci[0].name
+  policy_arn = aws_iam_policy.ci_s3_backend.arn
+}
+
+# --- DynamoDB state lock ---
+data "aws_iam_policy_document" "ci_dynamodb_lock" {
+  statement {
+    sid = "StateLockRW"
+    actions = [
+      "dynamodb:DescribeTable",
+      "dynamodb:GetItem",
+      "dynamodb:PutItem",
+      "dynamodb:DeleteItem",
+      "dynamodb:UpdateItem"
+    ]
+    resources = [
+      "arn:aws:dynamodb:${var.region}:${data.aws_caller_identity.current.account_id}:table/tf-lock-hivemind-dev"
+    ]
+  }
+}
+
+resource "aws_iam_policy" "ci_dynamodb_lock" {
+  name        = "eks-ci-dynamodb-lock"
+  description = "Access to Terraform lock table"
+  policy      = data.aws_iam_policy_document.ci_dynamodb_lock.json
+}
+
+resource "aws_iam_role_policy_attachment" "ci_dynamodb_lock_attach" {
+  role       = aws_iam_role.ci[0].name
+  policy_arn = aws_iam_policy.ci_dynamodb_lock.arn
+}
+
+
+# --- ECR push/pull (ALL repos) ---
+data "aws_iam_policy_document" "ci_ecr_all" {
+  statement {
+    sid       = "ECRGetAuthToken"
+    actions   = ["ecr:GetAuthorizationToken"]
     resources = ["*"]
   }
 
   statement {
-    sid = "ECRPushPullSpecificRepo"
+    sid = "ECRRepoRWAll"
     actions = [
       "ecr:BatchCheckLayerAvailability",
       "ecr:CompleteLayerUpload",
@@ -203,44 +294,38 @@ data "aws_iam_policy_document" "ci_ecr" {
       "ecr:BatchGetImage"
     ]
     resources = [
-      "arn:aws:ecr:${var.region}:${data.aws_caller_identity.current.account_id}:repository/${var.ecr_repo_name}"
+      "arn:aws:ecr:${var.region}:${data.aws_caller_identity.current.account_id}:repository/*"
     ]
   }
 }
 
-resource "aws_iam_policy" "ci_ecr_policy" {
-  count       = var.create_ci_role ? 1 : 0
-  name        = "eks-ci-ecr-${var.ecr_repo_name}"
-  description = "CI push/pull access to a specific ECR repository"
-  policy      = data.aws_iam_policy_document.ci_ecr[0].json
+resource "aws_iam_policy" "ci_ecr_all" {
+  name        = "eks-ci-ecr-all-repos"
+  description = "Push/pull to all ECR repositories in the account"
+  policy      = data.aws_iam_policy_document.ci_ecr_all.json
 }
 
-# Minimal AWS permissions to reach the EKS API (Kubernetes rights via Access Entries)
-data "aws_iam_policy_document" "ci_eks" {
-  count = var.create_ci_role ? 1 : 0
+resource "aws_iam_role_policy_attachment" "ci_ecr_all_attach" {
+  role       = aws_iam_role.ci[0].name
+  policy_arn = aws_iam_policy.ci_ecr_all.arn
+}
 
+# --- EKS API (helm/kubectl) ---
+data "aws_iam_policy_document" "ci_eks_basic" {
   statement {
-    sid     = "EKSBasicAccess"
-    actions = ["eks:DescribeCluster", "eks:AccessKubernetesApi"]
+    sid       = "EKSBasicAccess"
+    actions   = ["eks:DescribeCluster", "eks:AccessKubernetesApi"]
     resources = ["*"]
   }
 }
 
-resource "aws_iam_policy" "ci_eks_policy" {
-  count       = var.create_ci_role ? 1 : 0
-  name        = "eks-ci-eks-basic"
-  description = "CI minimal AWS permissions to access EKS API; RBAC via Access Entries"
-  policy      = data.aws_iam_policy_document.ci_eks[0].json
+resource "aws_iam_policy" "ci_eks_basic" {
+  name        = "eks-ci-eks-basic-ecr"
+  description = "Access to EKS API; cluster RBAC controls actual perms"
+  policy      = data.aws_iam_policy_document.ci_eks_basic.json
 }
 
-resource "aws_iam_role_policy_attachment" "ci_ecr_attach" {
-  count      = var.create_ci_role ? 1 : 0
+resource "aws_iam_role_policy_attachment" "ci_eks_basic_attach" {
   role       = aws_iam_role.ci[0].name
-  policy_arn = aws_iam_policy.ci_ecr_policy[0].arn
-}
-
-resource "aws_iam_role_policy_attachment" "ci_eks_attach" {
-  count      = var.create_ci_role ? 1 : 0
-  role       = aws_iam_role.ci[0].name
-  policy_arn = aws_iam_policy.ci_eks_policy[0].arn
+  policy_arn = aws_iam_policy.ci_eks_basic.arn
 }
