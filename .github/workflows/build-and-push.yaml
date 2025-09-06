@@ -24,14 +24,12 @@ jobs:
           aws ecr get-login-password --region eu-central-1 \
             | docker login --username AWS --password-stdin 959413831332.dkr.ecr.eu-central-1.amazonaws.com
 
-      - name: Build & Push
-        env:
-          REPO: 959413831332.dkr.ecr.eu-central-1.amazonaws.com/greeter
-          TAG:  ${{ github.sha }}
+      - name: Build & push image
         run: |
-          docker build -t $IMAGE_REPO:${{ github.sha }} -f Dockerfile .
-          docker push $IMAGE_REPO:${{ github.sha }}
-          echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
+          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+          docker build -t $IMAGE_REPO:$SHORT_SHA -f Dockerfile .
+          docker push $IMAGE_REPO:$SHORT_SHA
+          echo "IMAGE_TAG=$SHORT_SHA" >> $GITHUB_ENV
 
   deploy:
     needs: build-and-push

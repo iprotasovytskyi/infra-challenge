@@ -81,6 +81,12 @@ module "eks" {
   #   }
   # }
 
+  eks_managed_node_group_defaults = {
+    iam_role_additional_policies = {
+      ecr_ro = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+    }
+  }
+
   # Optional single managed node group (empty map when create_node_group = false)
   eks_managed_node_groups = var.create_node_group ? {
     (var.node_group_name) = {
