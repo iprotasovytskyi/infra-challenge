@@ -7,6 +7,11 @@ permissions:
   id-token: write
   contents: read
 
+env:
+  AWS_REGION: eu-central-1
+  AWS_ACCOUNT_ID: 959413831332
+  ECR_REPOSITORY: greeter
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -16,20 +21,26 @@ jobs:
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::959413831332:role/eks-ci-role
-          aws-region: eu-central-1
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/eks-ci-role
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to ECR
         run: |
           aws ecr get-login-password --region eu-central-1 \
-            | docker login --username AWS --password-stdin 959413831332.dkr.ecr.eu-central-1.amazonaws.com
+            | docker login --username AWS --password-stdin ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
 
-      - name: Build & push image
+      - name: Build & Push image
         run: |
           SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
-          docker build -t $IMAGE_REPO:$SHORT_SHA -f Dockerfile .
-          docker push $IMAGE_REPO:$SHORT_SHA
+          IMAGE_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$SHORT_SHA
+
+          echo "Building $IMAGE_URI"
+          docker build -t $IMAGE_URI -f Dockerfile .
+          docker push $IMAGE_URI
+
           echo "IMAGE_TAG=$SHORT_SHA" >> $GITHUB_ENV
+          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+
 
   deploy:
     needs: build-and-push
