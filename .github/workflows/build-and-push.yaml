@@ -1,4 +1,3 @@
-# .github/workflows/build-and-push.yml
 name: Build & Push
 on:
   push:
