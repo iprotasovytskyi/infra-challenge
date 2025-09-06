@@ -64,11 +64,8 @@ jobs:
         working-directory: ./greeter
         env:
           TF_VAR_image_repository: 959413831332.dkr.ecr.eu-central-1.amazonaws.com/greeter
-          TF_VAR_image_tag: ${{ needs.build-and-push.outputs.image_tag || github.sha }}
+          TF_VAR_image_tag: ${{ needs.build-and-push.outputs.image_tag }}
           TF_VAR_hello_tag: ${{ github.run_number }}
         run: |
           terraform init -input=false
-          terraform apply -input=false -auto-approve \
-            -var image_repository=${{ env.TF_VAR_image_repository }} \
-            -var image_tag=${{ env.TF_VAR_image_tag }} \
-            -var hello_tag=${{ env.TF_VAR_hello_tag }}
+          terraform apply -input=false -auto-approve
