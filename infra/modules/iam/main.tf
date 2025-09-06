@@ -329,3 +329,13 @@ resource "aws_iam_role_policy_attachment" "ci_eks_basic_attach" {
   role       = aws_iam_role.ci[0].name
   policy_arn = aws_iam_policy.ci_eks_basic.arn
 }
+
+resource "aws_eks_access_policy_association" "ci_cluster_admin" {
+  cluster_name  = var.cluster_name
+  principal_arn = aws_iam_role.ci[0].arn
+
+  policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+  access_scope {
+    type = "cluster"
+  }
+}

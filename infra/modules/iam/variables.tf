@@ -53,9 +53,8 @@ variable "github_branch" {
   default     = "main"
 }
 
-# ----- Narrow CI permissions to a single ECR repo -----
-variable "ecr_repo_name" {
-  description = "ECR repository name that CI may push/pull"
+variable "cluster_name" {
+  description = "EKS cluster name"
   type        = string
   default     = "greeter"
 }

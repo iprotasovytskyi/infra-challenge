@@ -37,7 +37,7 @@ module "iam" {
   github_branch               = "main"
 
   # Narrow ECR permissions to a single repo name
-  ecr_repo_name = "greeter"
+  cluster_name = "hive-eks"
 }
 
 output "human_admin_role_arn" {

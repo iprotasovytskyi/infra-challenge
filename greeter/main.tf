@@ -5,13 +5,15 @@ terraform {
     helm       = { source = "hashicorp/helm", version = "~> 2.12" }
   }
   backend "s3" {
-    bucket       = "hivemind-tf-state"
-    key          = "greeter/terraform.tfstate"
-    region       = "eu-central-1"
-    use_lockfile = true
-    encrypt      = true
+    bucket         = "hivemind-tf-state"
+    key            = "greeter/terraform.tfstate"
+    region         = "eu-central-1"
+    dynamodb_table = "tf-lock-hivemind-dev"
+    encrypt        = true
+    profile        = "hivemind"
   }
 }
+
 
 # AWS & cluster targeting
 variable "region" {
@@ -60,7 +62,7 @@ variable "hello_tag" {
 }
 
 provider "aws" {
-  region  = var.region
+  region = var.region
 }
 
 data "aws_eks_cluster" "this" { name = var.cluster_name }
