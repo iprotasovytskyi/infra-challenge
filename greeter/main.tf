@@ -67,7 +67,6 @@ variable "human_admin_role_arn" {
 
 provider "aws" {
   region  = var.region
-  profile = "hivemind"
   assume_role {
     role_arn     = var.human_admin_role_arn
     session_name = "tf-eks-admin"
