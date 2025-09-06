@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 jobs:
-  docker:
+  build-and-push:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,7 +29,37 @@ jobs:
           REPO: 959413831332.dkr.ecr.eu-central-1.amazonaws.com/greeter
           TAG:  ${{ github.sha }}
         run: |
-          docker build -t $REPO:$TAG .
-          docker push $REPO:$TAG
-          docker tag  $REPO:$TAG $REPO:latest
-          docker push $REPO:latest
+          docker build -t $IMAGE_REPO:${{ github.sha }} -f Dockerfile .
+          docker push $IMAGE_REPO:${{ github.sha }}
+          echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::959413831332:role/eks-ci-role
+          aws-region: eu-central-1
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init/Apply (greeter)
+        working-directory: infra/envs/dev/greeter
+        env:
+          TF_VAR_image_repository: 959413831332.dkr.ecr.eu-central-1.amazonaws.com/greeter
+          TF_VAR_image_tag: ${{ needs.build-and-push.outputs.image_tag || github.sha }}
+          TF_VAR_hello_tag: ${{ github.run_number }}
+        run: |
+          terraform init -input=false
+#          terraform apply -input=false -auto-approve \
+#            -var image_repository=${{ env.TF_VAR_image_repository }} \
+#            -var image_tag=${{ env.TF_VAR_image_tag }} \
+#            -var hello_tag=${{ env.TF_VAR_hello_tag }}

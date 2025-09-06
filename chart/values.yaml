@@ -1,0 +1,31 @@
+image:
+  repository: 959413831332.dkr.ecr.eu-central-1.amazonaws.com/greeter
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+replicaCount: 2
+
+env:
+  HELLO_TAG: "dev"
+
+service:
+  port: 8080
+  type: ClusterIP
+
+ingress:
+  enabled: true
+  className: public-ingress
+  hosts:
+    - host: ""
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
