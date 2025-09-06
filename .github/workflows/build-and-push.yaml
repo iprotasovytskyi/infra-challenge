@@ -61,7 +61,7 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init/Apply (greeter)
-        working-directory: infra/envs/dev/greeter
+        working-directory: ./greeter
         env:
           TF_VAR_image_repository: 959413831332.dkr.ecr.eu-central-1.amazonaws.com/greeter
           TF_VAR_image_tag: ${{ needs.build-and-push.outputs.image_tag || github.sha }}
