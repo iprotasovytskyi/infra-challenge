@@ -59,18 +59,8 @@ variable "hello_tag" {
   default     = "dev"
 }
 
-variable "eks_ci_role_arn" {
-  description = "IAM role ARN to assume for Kubernetes auth (should have EKS Access Entry, e.g. ClusterAdmin)."
-  type        = string
-  default     = "arn:aws:iam::959413831332:role/eks-ci-role"
-}
-
 provider "aws" {
   region  = var.region
-  assume_role {
-    role_arn     = var.eks_ci_role_arn
-    session_name = "tf-ci"
-  }
 }
 
 data "aws_eks_cluster" "this" { name = var.cluster_name }
