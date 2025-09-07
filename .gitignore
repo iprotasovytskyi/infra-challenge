@@ -1,0 +1,10 @@
+*.swp
+**/*/.terraform/
+**/*/.gnupg/.#*
+**/.gnupg/*
+MacBook-Pro.local
+pass.gpg
+users_list
+.terraform.lock.hcl
+.idea/
+.idea/*
