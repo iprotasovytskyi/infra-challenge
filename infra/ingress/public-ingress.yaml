@@ -216,7 +216,6 @@ controller:
   # -- When creating lots of ingress resources in a cluster with the pipeline, the controller can consume a lot of memory, leading to OOM and restars, which results to fail of the pipeline. We can try disable full test.
   extraArgs:
     disable-full-test: true
-#    default-ssl-certificate: "ingress-nginx/wildcard-certificate"
   ## extraArgs:
   ##   default-ssl-certificate: "<namespace>/<secret_name>"
   ##   time-buckets: "0.005,0.01,0.025,0.05,0.1,0.25,0.5,1,2.5,5,10"
@@ -504,7 +503,7 @@ controller:
       service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
       service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
       service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
-      service.beta.kubernetes.io/aws-load-balancer-subnets: "subnet-0cb0686e33097c0e9,subnet-0b663bd1771a08d88,subnet-04e63728632af7300"
+      service.beta.kubernetes.io/aws-load-balancer-subnets: "subnet-0556b4f5c5a799ea2,subnet-0b689b765463332b9,subnet-09915efd97e96235a"
     # -- Labels to be added to both controller services.
     labels: {}
     # -- Type of the external controller service.

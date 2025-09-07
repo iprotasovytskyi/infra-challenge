@@ -65,20 +65,6 @@ data "terraform_remote_state" "eks" {
   }
 }
 
-# data "aws_security_group" "node_sg" {
-#   id = data.aws_eks_cluster.this.vpc_config[0].cluster_security_group_id
-# }
-
-# resource "aws_vpc_security_group_ingress_rule" "nodes_http_https" {
-#   for_each          = toset(["80", "443"])
-#   security_group_id = data.terraform_remote_state.eks.outputs.node_security_group_id
-#   cidr_ipv4         = "0.0.0.0/0"
-#   from_port         = tonumber(each.value)
-#   to_port           = tonumber(each.value)
-#   ip_protocol       = "tcp"
-#   description       = "Allow public ${each.value}/tcp to EKS nodes for NLB (ip targets)"
-# }
-
 # Use release name "public-ingress" to match your selectors in values.yaml
 resource "helm_release" "ingress_nginx" {
   name             = "public-ingress"

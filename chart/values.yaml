@@ -12,6 +12,13 @@ service:
   port: 8080
   type: ClusterIP
 
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 60
+  targetMemoryUtilizationPercentage: 70
+
 ingress:
   enabled: true
   className: public-ingress
@@ -24,8 +31,8 @@ ingress:
 
 resources:
   requests:
-    cpu: 50m
-    memory: 64Mi
+    cpu: 100m
+    memory: 128Mi
   limits:
-    cpu: 250m
+    cpu: 500m
     memory: 256Mi
